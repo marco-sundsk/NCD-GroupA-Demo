@@ -9,6 +9,95 @@ RollingDice
 User deposits 1 NEAR and given a number between 1 and 6. Then he get a chance to roll a dice on chain.
 if he rolls out a number identical with the number he just given, then he wins the jackpot, otherwise, his 1 NEAR will be rushed into the jackpot.
 
+Contract Interface
+====================
+
+```rust
+/// contract commission rate when winner get prized
+pub struct RewardFeeFraction {
+    pub numerator: u32,
+    pub denominator: u32,
+}
+
+/// each winner's highlight record
+pub struct HumanReadableWinnerInfo {
+    pub user: AccountId,
+    pub amount: U128,
+    pub height: U64,
+    pub ts: U64,
+}
+
+/// status of this contract except commission fee info
+pub struct HumanReadableContractInfo {
+    pub owner: AccountId,
+    pub jack_pod: U128,  // winner gain half of jack_pod
+    pub owner_pod: U128, // the contract commission fee goes to here
+    pub dice_number: u8, // how many dice we use in one rolling action
+    pub rolling_fee: U128,  // how much does one rolling action cost
+}
+
+//****************/
+//***** INIT *****/
+//****************/
+
+/// initialization of this contract
+ #[init]
+pub fn new(
+   owner_id: AccountId,
+   dice_number: u8,
+   rolling_fee: U128,
+   reward_fee_fraction: RewardFeeFraction,
+) -> Self;
+
+
+//***************************/
+//***** OWNER FUNCTIONS *****/
+//***************************/
+
+/// deposit to jackpod, used for initalizing the very first jackpod,
+/// otherwise, the jackpod is initialized to 0.
+#[payable]
+pub fn deposit_jackpod(&mut self);
+
+/// withdraw ownerpod to owner's account
+pub fn withdraw_ownerpod(&mut self, amount: U128);
+
+/// Updates current reward fee fraction to the new given fraction.
+pub fn update_reward_fee_fraction(&mut self, reward_fee_fraction: RewardFeeFraction);
+
+/// Updates current dice number in one rolling action.
+pub fn update_dice_number(&mut self, dice_number: u8);
+
+/// Updates current rolling fee needed for one rolling action.
+pub fn update_rolling_fee(&mut self, rolling_fee: U128);
+
+//**************************/
+//***** USER FUNCTIONS *****/
+//**************************/
+
+/// user deposit near to play rolling once, left over amount would be paid back.
+/// and if the target equals to the dice point, he get half of the jackpod,
+/// otherwise, the rolling_fee amount of NEAR in her deposit would be rush into jackpod.
+/// return the total dice points.
+#[payable]
+pub fn roll_dice(&mut self, target: u8) -> u8;
+
+
+//**************************/
+//***** USER FUNCTIONS *****/
+//**************************/
+
+/// get a list of winner's record.
+pub fn get_win_history(&self, from_index: u64, limit: u64) -> Vec<HumanReadableWinnerInfo>;
+
+/// get current contract status
+pub fn get_contract_info(&self) -> HumanReadableContractInfo;
+
+/// get current contract commission fee
+pub fn get_reward_fee_fraction(&self) -> RewardFeeFraction;
+
+```
+
 Quick Start
 ===========
 
