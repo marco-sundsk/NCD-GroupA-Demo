@@ -84,7 +84,7 @@ pub fn roll_dice(&mut self, target: u8) -> u8;
 
 
 //**************************/
-//***** USER FUNCTIONS *****/
+//***** VIEW FUNCTIONS *****/
 //**************************/
 
 /// get a list of winner's record.
