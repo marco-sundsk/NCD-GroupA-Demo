@@ -181,40 +181,61 @@ impl NearDice {
     /// if identical to target, modify jackpod amount and transfer half of jackpod to caller (within a tip to the owner_pod)
     #[payable]
     pub fn roll_dice(&mut self, target: u8) -> u8 {
-        let amount = env::attached_deposit();
+
+        // check called by real user NOT from other contracts
         let account_id = env::predecessor_account_id();
+        assert_eq!(
+            account_id.clone(),
+            env::signer_account_id(),
+            "This method must be called directly from user."
+        );
+
+        // check user attached enough rolling fee
+        let amount = env::attached_deposit();
         assert!(
             amount >= self.rolling_fee,
             format!("You must deposit more than {}", self.rolling_fee)
         );
 
+        // leftover will return to caller
         let leftover = amount - self.rolling_fee;
+        // net_reward is user's actual reward
         let net_reward;
+        // always update jack_pod before rolling dice
         self.jack_pod += self.rolling_fee;
 
-        // 获取单字节随机数
+        // rolling dice here
         let random_u8: u8 = env::random_seed().iter().fold(0_u8, |acc, x| acc.wrapping_add(*x));
         let dice_point = self.dice_number as u16 * 6_u16 * random_u8 as u16 / 0x100_u16 + 1;
-        if target == dice_point as u8 {
+        
+        // let's see how lucky caller is this time
+        if target == dice_point as u8 {  // Wow, he wins
+            // figure out gross reward and update jack pod
             let gross_reward = self.jack_pod / 2;
             self.jack_pod -= gross_reward;
+            // split gross to net and owner fee
             let owners_fee = self.reward_fee_fraction.multiply(gross_reward);
             net_reward = gross_reward - owners_fee;
+            // update owner pod 
             self.owner_pod += owners_fee;
+            // records this winning
             self.win_history.push(&WinnerInfo {
                 user: account_id.clone(),
                 amount: net_reward,
                 height: env::block_index(),
                 ts: env::block_timestamp(),
             });
-        } else {
+        } else {  // oops, he fails
             net_reward = 0;
         }
+
+        // refund caller if needed
         let refound = net_reward + leftover;
         if refound > 0 {
             Promise::new(account_id.clone()).transfer(net_reward+leftover);
         }
         
+        // return dice point
         dice_point as u8
     }
 
