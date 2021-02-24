@@ -14,22 +14,183 @@
 // To conserve gas, efficient serialization is achieved through Borsh (http://borsh.io/)
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::wee_alloc;
-use near_sdk::{env, near_bindgen};
+use near_sdk::json_types::{U64, U128};
+use near_sdk::serde::{Deserialize, Serialize};
+use near_sdk::{env, near_bindgen, AccountId, Balance, BlockHeight, Promise};
 use std::collections::HashMap;
+use near_sdk::collections::Vector;
+use uint::construct_uint;
+
+construct_uint! {
+    /// 256-bit unsigned integer.
+    pub struct U256(4);
+}
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub struct RewardFeeFraction {
+    pub numerator: u32,
+    pub denominator: u32,
+}
+
+impl RewardFeeFraction {
+    pub fn assert_valid(&self) {
+        assert_ne!(self.denominator, 0, "Denominator must be a positive number");
+        assert!(
+            self.numerator <= self.denominator,
+            "The reward fee must be less or equal to 1"
+        );
+    }
+
+    pub fn multiply(&self, value: Balance) -> Balance {
+        (U256::from(self.numerator) * U256::from(value) / U256::from(self.denominator)).as_u128()
+    }
+}
+
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct WinnerInfo {
+    pub user: AccountId,  // winner
+    pub amount: Balance, // win prize
+    pub height: BlockHeight,
+    pub ts: u64,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct HumanReadableWinnerInfo {
+    pub user: AccountId,
+    pub amount: U128,
+    pub height: U64,
+    pub ts: U64,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct HumanReadableContractInfo {
+    pub owner: AccountId,
+    pub jack_pod: U128,
+    pub owner_pod: U128,
+    pub dice_number: u8,
+    pub rolling_fee: U128,
+}
+
 // Structs in Rust are similar to other languages, and may include impl keyword as shown below
 // Note: the names of the structs are not important when calling the smart contract, but the function names are
 #[near_bindgen]
-#[derive(Default, BorshDeserialize, BorshSerialize)]
-pub struct Welcome {
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct NearDice {
+    pub owner_id: AccountId,
+    pub dice_number: u8,
+    pub rolling_fee: Balance,  // how many NEAR needed to roll once.
+    pub jack_pod: Balance,  // half of them would be show to user as jack_pod amount
+    pub owner_pod: Balance,  // incoming of the contract, can be withdraw by owner
+    pub reward_fee_fraction: RewardFeeFraction,
+    pub win_history: Vector<WinnerInfo>,
     records: HashMap<String, String>,
 }
 
+impl Default for NearDice {
+    fn default() -> Self {
+        env::panic(b"dice contract should be initialized before usage")
+    }
+}
+
 #[near_bindgen]
-impl Welcome {
+impl NearDice {
+
+    #[init]
+    pub fn new(
+        owner_id: AccountId,
+        dice_number: u8,
+        rolling_fee: U128,
+        reward_fee_fraction: RewardFeeFraction,
+    ) -> Self {
+        assert!(!env::state_exists(), "Already initialized");
+        reward_fee_fraction.assert_valid();
+        assert!(
+            env::is_valid_account_id(owner_id.as_bytes()),
+            "The owner account ID is invalid"
+        );
+        
+        Self {
+            owner_id,
+            dice_number,
+            rolling_fee: rolling_fee.into(),
+            jack_pod: 0_u128,
+            owner_pod: 0_u128,
+            reward_fee_fraction,
+            win_history: Vector::new(b"w".to_vec()),
+            records: HashMap::new(),
+        }
+    }
+
+    //***********************/
+    // owner functions
+    //***********************/
+
+    fn assert_owner(&self) {
+        assert_eq!(
+            env::predecessor_account_id(),
+            self.owner_id,
+            "Can only be called by the owner"
+        );
+    }
+    /// 
+    pub fn withdraw_ownerpod(&mut self, amount: U128) {
+        self.assert_owner();
+        let amount: Balance = amount.into();
+        assert!(
+            self.owner_pod >= amount,
+            "The owner pod has insurficent funds"
+        );
+
+        let account_id = env::predecessor_account_id();
+        self.owner_pod -= amount;
+        Promise::new(account_id).transfer(amount);
+    }
+
+    #[payable]
+    pub fn deposit_jackpod(&mut self) {
+        self.assert_owner();
+        let amount = env::attached_deposit();
+        self.jack_pod += amount;
+    }
+
+    /// Owner's method.
+    /// Updates current reward fee fraction to the new given fraction.
+    pub fn update_reward_fee_fraction(&mut self, reward_fee_fraction: RewardFeeFraction) {
+        self.assert_owner();
+        reward_fee_fraction.assert_valid();
+        self.reward_fee_fraction = reward_fee_fraction;
+    }
+
+    pub fn update_dice_number(&mut self, dice_number: u8) {
+        self.assert_owner();
+        self.dice_number = dice_number;
+    }
+
+    pub fn update_rolling_fee(&mut self, rolling_fee: U128) {
+        self.assert_owner();
+        self.rolling_fee = rolling_fee.into();
+    }
+
+    //***********************/
+    // rolling functions
+    //***********************/
+
+    /// rolling dice
+    /// check the deposit is larger than rolling_fee NEAR, and return leftover back to caller at end of call,
+    /// add rolling_fee NEAR to jackpod and get random number between [1, self.dice_number * 6],
+    /// if identical to target, modify jackpod amount and transfer half of jackpod to caller (within a tip to the owner_pod)
+    #[payable]
+    pub fn roll_dice(&mut self, target: u8) -> u8 {
+        // TODO:
+            1_u8
+    }
+
     pub fn set_greeting(&mut self, message: String) {
         let account_id = env::signer_account_id();
 
@@ -37,6 +198,55 @@ impl Welcome {
         env::log(format!("Saving greeting '{}' for account '{}'", message, account_id,).as_bytes());
 
         self.records.insert(account_id, message);
+    }
+
+    //***********************/
+    // view functions
+    //***********************/
+
+    fn get_hr_info(&self, index: u64) -> HumanReadableWinnerInfo {
+        let info = self.win_history.get(index).expect("Error: no this item in winner history!");
+        HumanReadableWinnerInfo {
+            user: info.user.clone(),
+            amount: info.amount.into(),
+            height: info.height.into(),
+            ts: info.ts.into(),
+        }
+    }
+
+    /// Returns the list of winner info
+    pub fn get_win_history(&self, from_index: u64, limit: u64) -> Vec<HumanReadableWinnerInfo> {
+        (from_index..std::cmp::min(from_index + limit, self.win_history.len() as u64))
+            .map(|index| self.get_hr_info(index))
+            .collect()
+    }
+
+    pub fn get_contract_info(&self) -> HumanReadableContractInfo {
+        HumanReadableContractInfo {
+            owner: self.owner_id.clone(),
+            jack_pod: self.jack_pod.into(),
+            owner_pod: self.owner_pod.into(),
+            dice_number: self.dice_number,
+            rolling_fee: self.rolling_fee.into(),
+        }
+    }
+
+    // pub fn get_jackpod(&self) -> U128 {
+    //     self.jack_pod.into()
+    // }
+
+    // pub fn get_ownerpod(&self) -> U128 {
+    //     self.owner_pod.into()
+    // }
+
+    // /// Returns account ID of the owner.
+    // pub fn get_owner_id(&self) -> AccountId {
+    //     self.owner_id.clone()
+    // }
+
+    /// Returns the current reward fee as a fraction.
+    pub fn get_reward_fee_fraction(&self) -> RewardFeeFraction {
+        self.reward_fee_fraction.clone()
     }
 
     // `match` is similar to `switch` in other languages; here we use it to default to "Hello" if
@@ -93,7 +303,7 @@ mod tests {
     fn set_then_get_greeting() {
         let context = get_context(vec![], false);
         testing_env!(context);
-        let mut contract = Welcome::default();
+        let mut contract = NearDice::default();
         contract.set_greeting("howdy".to_string());
         assert_eq!(
             "howdy".to_string(),
@@ -105,7 +315,7 @@ mod tests {
     fn get_default_greeting() {
         let context = get_context(vec![], true);
         testing_env!(context);
-        let contract = Welcome::default();
+        let contract = NearDice::default();
         // this test did not call set_greeting so should return the default "Hello" greeting
         assert_eq!(
             "Hello".to_string(),

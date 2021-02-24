@@ -1,5 +1,5 @@
 [package]
-name = "greeter"
+name = "neardice"
 version = "0.1.0"
 authors = ["Near Inc <hello@near.org>"]
 edition = "2018"
@@ -9,6 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 near-sdk = "2.0.0"
+uint = { version = "0.8.3", default-features = false }
 
 [profile.release]
 codegen-units = 1
