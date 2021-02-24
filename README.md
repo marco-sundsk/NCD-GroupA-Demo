@@ -1,14 +1,7 @@
 NCD-GroupA-Demo
 ==================
 
-This [React] app was initialized with [create-near-app]  
-
-RollingDice
-
-User deposits 1 NEAR and given a number between 1 and 6. Then he get a chance to roll a dice on chain.   
-if he rolls out a number identical with the number he just given, then he wins the jackpot, 
-otherwise, his 1 NEAR will be rushed into the jackpot.
-
+This [Vue] app was initialized with [create-near-app]
 
 
 Quick Start
@@ -31,9 +24,8 @@ Exploring The Code
 
 1. The "backend" code lives in the `/contract` folder. See the README there for
    more info.
-2. The frontend code lives in the `/src` folder. `/src/index.html` is a great
-   place to start exploring. Note that it loads in `/src/index.js`, where you
-   can learn how the frontend connects to the NEAR blockchain.
+2. The frontend code lives in the `/src` folder. `/src/main.js` is a great
+   place to start exploring.
 3. Tests: there are different kinds of tests for the frontend and the smart
    contract. See `contract/README` for info about how it's tested. The frontend
    code gets tested with [jest]. You can run both of these at once with `yarn
@@ -99,7 +91,7 @@ Troubleshooting
 On Windows, if you're seeing an error containing `EPERM` it may be related to spaces in your path. Please see [this issue](https://github.com/zkat/npx/issues/209) for more details.
 
 
-  [React]: https://reactjs.org/
+  [Vue]: https://vuejs.org/
   [create-near-app]: https://github.com/near/create-near-app
   [Node.js]: https://nodejs.org/en/download/package-manager/
   [jest]: https://jestjs.io/
