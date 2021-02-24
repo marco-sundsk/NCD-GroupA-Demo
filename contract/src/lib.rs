@@ -1,13 +1,7 @@
 /*
- * This is an example of a Rust smart contract with two simple, symmetric functions:
- *
- * 1. set_greeting: accepts a greeting, such as "howdy", and records it for the user (account_id)
- *    who sent the request
- * 2. get_greeting: accepts an account_id and returns the greeting saved for it, defaulting to
- *    "Hello"
- *
- * Learn more about writing NEAR smart contracts with Rust:
- * https://github.com/near/near-sdk-rs
+ * This is NearDice contract:
+ * 
+ * 
  *
  */
 
@@ -89,7 +83,7 @@ pub struct NearDice {
     pub owner_pod: Balance,  // incoming of the contract, can be withdraw by owner
     pub reward_fee_fraction: RewardFeeFraction,
     pub win_history: Vector<WinnerInfo>,
-    records: HashMap<String, String>,
+    records: HashMap<String, String>,  // obsolete when release
 }
 
 impl Default for NearDice {
@@ -187,8 +181,41 @@ impl NearDice {
     /// if identical to target, modify jackpod amount and transfer half of jackpod to caller (within a tip to the owner_pod)
     #[payable]
     pub fn roll_dice(&mut self, target: u8) -> u8 {
-        // TODO:
-            1_u8
+        let amount = env::attached_deposit();
+        let account_id = env::predecessor_account_id();
+        assert!(
+            amount >= self.rolling_fee,
+            format!("You must deposit more than {}", self.rolling_fee)
+        );
+
+        let leftover = amount - self.rolling_fee;
+        let net_reward;
+        self.jack_pod += self.rolling_fee;
+
+        // 获取单字节随机数
+        let random_u8: u8 = env::random_seed().iter().fold(0_u8, |acc, x| acc.wrapping_add(*x));
+        let dice_point = self.dice_number as u16 * 6_u16 * random_u8 as u16 / 0x100_u16 + 1;
+        if target == dice_point as u8 {
+            let gross_reward = self.jack_pod / 2;
+            self.jack_pod -= gross_reward;
+            let owners_fee = self.reward_fee_fraction.multiply(gross_reward);
+            net_reward = gross_reward - owners_fee;
+            self.owner_pod += owners_fee;
+            self.win_history.push(&WinnerInfo {
+                user: account_id.clone(),
+                amount: net_reward,
+                height: env::block_index(),
+                ts: env::block_timestamp(),
+            });
+        } else {
+            net_reward = 0;
+        }
+        let refound = net_reward + leftover;
+        if refound > 0 {
+            Promise::new(account_id.clone()).transfer(net_reward+leftover);
+        }
+        
+        dice_point as u8
     }
 
     pub fn set_greeting(&mut self, message: String) {
