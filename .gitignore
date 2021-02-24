@@ -7,3 +7,10 @@ out/
 *.log
 **/target/
 
+
+.idea
+
+**/*.rs.bk
+
+neardev
+
