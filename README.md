@@ -1,7 +1,14 @@
 NCD-GroupA-Demo
 ==================
 
-This [React] app was initialized with [create-near-app]
+This [React] app was initialized with [create-near-app]  
+
+RollingDice
+
+User deposits 1 NEAR and given a number between 1 and 6. Then he get a chance to roll a dice on chain.   
+if he rolls out a number identical with the number he just given, then he wins the jackpot, 
+otherwise, his 1 NEAR will be rushed into the jackpot.
+
 
 
 Quick Start
