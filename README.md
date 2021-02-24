@@ -87,7 +87,9 @@ pub fn roll_dice(&mut self, target: u8) -> u8;
 //***** VIEW FUNCTIONS *****/
 //**************************/
 
-/// get a list of winner's record.
+/// get a list of winner's record in LIFO order
+/// best practise is set from_index to 0, and limit to 20,
+/// that means to get latest 20 winners information with latest first order.
 pub fn get_win_history(&self, from_index: u64, limit: u64) -> Vec<HumanReadableWinnerInfo>;
 
 /// get current contract status
