@@ -72,7 +72,7 @@ pub fn update_dice_number(&mut self, dice_number: u8);
 pub fn update_rolling_fee(&mut self, rolling_fee: U128);
 
 //**************************/
-//***** USER FUNCTIONS *****/
+//***** USER FUNCTIONS *****/
 //**************************/
 
 /// user deposit near to play rolling once, left over amount would be paid back.
