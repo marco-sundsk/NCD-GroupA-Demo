@@ -241,10 +241,11 @@ impl NearDice {
         }
     }
 
-    /// Returns the list of winner info
+    /// Returns the list of winner info in LIFO order
     pub fn get_win_history(&self, from_index: u64, limit: u64) -> Vec<HumanReadableWinnerInfo> {
-        (from_index..std::cmp::min(from_index + limit, self.win_history.len() as u64))
-            .map(|index| self.get_hr_info(index))
+        let counts: u64 = self.win_history.len() as u64;
+        (from_index..std::cmp::min(from_index + limit, counts))
+            .map(|index| self.get_hr_info(counts - index - 1))  // reverse to get LIFO order
             .collect()
     }
 
@@ -257,19 +258,6 @@ impl NearDice {
             rolling_fee: self.rolling_fee.into(),
         }
     }
-
-    // pub fn get_jackpod(&self) -> U128 {
-    //     self.jack_pod.into()
-    // }
-
-    // pub fn get_ownerpod(&self) -> U128 {
-    //     self.owner_pod.into()
-    // }
-
-    // /// Returns account ID of the owner.
-    // pub fn get_owner_id(&self) -> AccountId {
-    //     self.owner_id.clone()
-    // }
 
     /// Returns the current reward fee as a fraction.
     pub fn get_reward_fee_fraction(&self) -> RewardFeeFraction {
