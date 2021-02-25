@@ -1,7 +1,7 @@
 NCD-GroupA-Demo
 ==================
 
-This a demo project for NCD program phase-1.
+This is a homework demo project for NCD program phase-1.
 
 RollingDice On NEAR
 ====================
@@ -18,55 +18,81 @@ Beyond what you can see in this demo, NEAR can even generate independent randomn
 
 ## How to play
 
-On home page, user can see the whole status of playground without login, i.e. an NEAR account is not necessary. you would have full imformation about owner account of this contract, dice price, commission fee rate, the size of current jackpod and etc.  
+On home page, user can see the whole status of playground without login, i.e. an NEAR account is not necessary. He would have full imformation about owner account of this contract, dice price, commission fee rate, the size of current jackpod and etc.  
 
-Then, user can login with NEAR account and buy several dices. With dices bought, you can guess a number and roll dice again and again. If the dice point is equal to your guess, half of jackpod would be yours. Other the amount you paid for the dice would belong to the jackpod.  
+Then, user can login with NEAR account and buy several dices. With dices bought, he can guess a number and roll dice again and again. If the dice point is equal to his guess, half of jackpod would belong to him. Otherwise the amount he paid for the dice would belong to the jackpod.  
 
-During playing, the recently winner record would appear and be auto refreshed on screen too. 
+During playing, the latest 20 win records would appear and be auto refreshed on screen too. 
 
 About Contract
 ====================
-It's need to be mentioned that it is a pure dapp project, which means there is no centralized backend or data server, all persistent information is stored and mananged on NEAR chain by a contract.
+It's need to be mentioned that it is a pure dapp project, which means there is no centralized backend nor data server, all persistent information is stored and mananged on NEAR chain by a contract.
 
 ## Contract Structure
 
+```rust
+/// This structure describe a winning event
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct WinnerInfo {
+    pub user: AccountId,  // winner accountId
+    pub amount: Balance,  // how much he got as win reward
+    pub height: BlockHeight,  // the block hight this event happened
+    pub ts: u64,  // the timestamp this event happened
+}
+
+/// main structure of this contract
+/// 
+#[near_bindgen]
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct NearDice {
+    pub owner_id: AccountId,  // owner can adjust params of this playground
+    pub dice_number: u8,  // how many dices one rolling event uses
+    pub rolling_fee: Balance,  // how much a dice costs when user buys it
+    pub jack_pod: Balance,  // as name shows and half of it would belong to the winner
+    pub owner_pod: Balance,  // winner would share a tip to the playground, this is where those tips go
+    pub reward_fee_fraction: RewardFeeFraction,  // a fraction defines tip rate
+    pub win_history: Vector<WinnerInfo>,  // an always grow vector records all win event, as a demo, we ignore the management of its size, but in real project, it must be taken care of, maybe has a maximum length and remove the oldest item when exceeds.
+    pub accounts: LookupMap<AccountId, Balance>,  // records dice user bought by his payment amount. This map has a mechanism to shrink, when a user's balance is reduce to zero, the entry would be removed.
+}
+
+```
 
 ## Contract Interface
 
 
 ```rust
-/// contract commission rate when winner get prized
+/// winner's tip rate
 pub struct RewardFeeFraction {
     pub numerator: u32,
     pub denominator: u32,
 }
 
-/// each winner's highlight record
+/// a human readable version for win event struct, used in return value to caller
 pub struct HumanReadableWinnerInfo {
-    pub user: AccountId,
-    pub amount: U128,
-    pub height: U64,
-    pub ts: U64,
+    pub user: AccountId,  // winner accountId
+    pub amount: U128,  // the reward he got
+    pub height: U64,  // block height the event happens
+    pub ts: U64,  // timestamp the event happens
 }
 
-/// status of this contract except commission fee info
+/// status of this playground, as return value of get_contract_info
 pub struct HumanReadableContractInfo {
-    pub owner: AccountId,
-    pub jack_pod: U128,  // winner gain half of jack_pod
-    pub owner_pod: U128, // the contract commission fee goes to here
-    pub dice_number: u8, // how many dice we use in one rolling action
-    pub rolling_fee: U128,  // how much does one rolling action cost
+    pub owner: AccountId,  // who runs this playground, if you feel bad, just sue him :)
+    pub jack_pod: U128,  // you know what it means
+    pub owner_pod: U128, // winner's tip goes to here, owner can withdraw
+    pub dice_number: u8, // how many dice we use in one rolling event
+    pub rolling_fee: U128,  // how much a dice costs when user wanna buy it
 }
 
-/// every roll_dice action would return this info
+/// every roll_dice event would return this info
 pub struct HumanReadableDiceResult {
-    pub user: AccountId,  // the one rolls
+    pub user: AccountId,  // who rolls
     pub user_guess: u8,  // the number he guess
     pub dice_point: u8,  // the number dice shows
     pub reward_amount: U128,  // reward he got
-    pub jackpod_left: U128,  // jackpod after his action
-    pub height: U64,  // block height that he rolls
-    pub ts: U64,  // timestamp when he rolls
+    pub jackpod_left: U128,  // jackpod after this event
+    pub height: U64,  // the block height when he rolls
+    pub ts: U64,  // the timestamp when he rolls
 }
 
 //****************/
@@ -88,7 +114,7 @@ pub fn new(
 //***************************/
 
 /// deposit to jackpod, used for initalizing the very first jackpod,
-/// otherwise, the jackpod is initialized to 0.
+/// otherwise, the jackpod is initialized as 0.
 #[payable]
 pub fn deposit_jackpod(&mut self);
 
@@ -98,10 +124,10 @@ pub fn withdraw_ownerpod(&mut self, amount: U128);
 /// Updates current reward fee fraction to the new given fraction.
 pub fn update_reward_fee_fraction(&mut self, reward_fee_fraction: RewardFeeFraction);
 
-/// Updates current dice number in one rolling action.
+/// Updates current dice number used in one rolling event.
 pub fn update_dice_number(&mut self, dice_number: u8);
 
-/// Updates current rolling fee needed for one rolling action.
+/// Updates current dice price.
 pub fn update_rolling_fee(&mut self, rolling_fee: U128);
 
 //**************************/
@@ -111,11 +137,11 @@ pub fn update_rolling_fee(&mut self, rolling_fee: U128);
 /// user deposit near to buy dice. 
 /// he can buy multiple dices,
 /// any leftover amount would refund
-/// eg: rolling_fee is 1 Near, he can buy_dice with 4.4 Near and got 4 dice and 0.4 Near refund.
+/// eg: rolling_fee is 1 Near, he can buy_dice with 4.4 Near and got 4 dices and 0.4 Near refund.
 #[payable]
 pub fn buy_dice(&mut self);
 
-/// user roll dice once, the his available dice count would reduce by one.
+/// user roll dice once, then his available dice count would reduce by one.
 pub fn roll_dice(&mut self, target: u8) -> HumanReadableDiceResult;
 
 
@@ -123,15 +149,15 @@ pub fn roll_dice(&mut self, target: u8) -> HumanReadableDiceResult;
 //***** VIEW FUNCTIONS *****/
 //**************************/
 
-/// get a list of winner's record in LIFO order
+/// get a list of winn events in LIFO order
 /// best practise is set from_index to 0, and limit to 20,
-/// that means to get latest 20 winners information with latest first order.
+/// that means to get latest 20 win events information with latest first order.
 pub fn get_win_history(&self, from_index: u64, limit: u64) -> Vec<HumanReadableWinnerInfo>;
 
-/// get current contract status
+/// get current playground status
 pub fn get_contract_info(&self) -> HumanReadableContractInfo;
 
-/// get current contract commission fee
+/// get current winner tip rate
 pub fn get_reward_fee_fraction(&self) -> RewardFeeFraction;
 
 /// get account's available dice count
