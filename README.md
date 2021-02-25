@@ -41,7 +41,6 @@ pub struct WinnerInfo {
 }
 
 /// main structure of this contract
-/// 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct NearDice {
@@ -51,8 +50,15 @@ pub struct NearDice {
     pub jack_pod: Balance,  // as name shows and half of it would belong to the winner
     pub owner_pod: Balance,  // winner would share a tip to the playground, this is where those tips go
     pub reward_fee_fraction: RewardFeeFraction,  // a fraction defines tip rate
-    pub win_history: Vector<WinnerInfo>,  // an always grow vector records all win event, as a demo, we ignore the management of its size, but in real project, it must be taken care of, maybe has a maximum length and remove the oldest item when exceeds.
-    pub accounts: LookupMap<AccountId, Balance>,  // records dice user bought by his payment amount. This map has a mechanism to shrink, when a user's balance is reduce to zero, the entry would be removed.
+    // an always grow vector records all win event, 
+    // as a demo, we ignore the management of its size, 
+    // but in real project, it must be taken care of, 
+    // maybe has a maximum length and remove the oldest item when exceeds.
+    pub win_history: Vector<WinnerInfo>,
+    // records dice user bought by his payment amount. 
+    // This map has a mechanism to shrink, 
+    // when a user's balance is reduce to zero, the entry would be removed.
+    pub accounts: LookupMap<AccountId, Balance>,
 }
 
 ```
