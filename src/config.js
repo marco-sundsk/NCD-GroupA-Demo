@@ -1,9 +1,4 @@
 const CONTRACT_NAME = process.env.VUE_APP_CONTRACT_NAME ||'NCD-GroupA-Demo'
-const GAS = Math.pow(10,14).toString();
-const AT='000000000000000000000000';
-
-window.gas = GAS;
-window.at = AT;
 
 function getConfig(env) {
   switch (env) {

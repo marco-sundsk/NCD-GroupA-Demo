@@ -3,8 +3,21 @@
     <button class="link" style="float: right" v-on:click="logout">Sign out</button>
     <main>
       <h1>
-        {{ accountId }}
+        Welcome {{ accountId }}, You have {{this.leftCount}} time to dice
       </h1>
+      <form v-on:submit.prevent="buyDice">
+        <fieldset ref="fieldset">
+          <label
+            for="buyDice"
+            style="display:block; color:var(--gray);margin-bottom:0.5em;"
+          >Buy Dice</label>
+          <div style="display:flex">
+            Buy<input v-model="rollCount" autocomplete="off" id="roll" style="flex:1" />times
+            <button id="roll_dice" style="border-radius:0 5px 5px 0">Buy</button>
+          </div>
+        </fieldset>
+      </form>
+
       <form v-on:submit.prevent="rollDice">
         <fieldset ref="fieldset">
           <label
@@ -87,23 +100,25 @@ import Notification from "./Notification.vue"
 export default {
   name: "SignedIn",
 
-  beforeMount() {
-    if (this.isSignedIn) {
-      this.retrieveSavedGreeting()
-    }
-  },
-
   components: {
     Notification,
   },
 
   data: function () {
     return {
+      gas:Math.pow(10,14).toString(),
+      at:"000000000000000000000000",
       savedGreeting: "",
       newGreeting: "",
+      leftCount:0,
+      rollCount:"",
       rollNumber:"",
       notificationVisible: false,
     }
+  },
+
+  created() {
+    this.getLeftCount();
   },
 
   computed: {
@@ -122,14 +137,49 @@ export default {
   },
 
   methods: {
-    retrieveSavedGreeting() {
+    getLeftCount() {
       //retrieve greeting
       window.contract
-        .get_greeting({ account_id: window.accountId })
-        .then((greetingFromContract) => {
-          this.savedGreeting = greetingFromContract
-          this.newGreeting = greetingFromContract
+        .get_account_dice_count({ account_id: window.accountId })
+        .then((leftCount) => {
+          this.leftCount = leftCount
         })
+    },
+
+    buyDice: async function () {
+      // fired on form submit button used to update the greeting
+
+      // disable the form while the value gets updated on-chain
+      this.$refs.fieldset.disabled = true
+
+      try {
+        
+        // make an update call to the smart contract
+        await window.contract.buy_dice(
+          {},
+          this.gas,
+          parseInt(this.rollCount)+this.at
+        )
+      } catch (e) {
+        alert(
+          "Something went wrong! " +
+            "Maybe you need to sign out and back in? " +
+            "Check your browser console for more info."
+        )
+        throw e //re-throw
+      } finally {
+        // re-enable the form, whether the call succeeded or failed
+        this.$refs.fieldset.disabled = false
+      }
+
+      this.notificationVisible = true //show new notification
+
+      // remove Notification again after css animation completes
+      // this allows it to be shown again next time the form is submitted
+      setTimeout(() => {
+        this.notificationVisible = false
+      }, 11000)
+
     },
 
     rollDice: async function () {
@@ -144,9 +194,7 @@ export default {
         await window.contract.roll_dice(
           {
             target: parseInt(this.rollNumber),
-          },
-          gas,
-          1+at
+          }
         )
       } catch (e) {
         alert(

@@ -10,8 +10,6 @@ import 'bootstrap-vue/dist/bootstrap-vue.css'
 // Make BootstrapVue available throughout your project
 Vue.use(BootstrapVue)
 
-
-
 import { initContract } from "./utils"
 
 Vue.config.productionTip = false
