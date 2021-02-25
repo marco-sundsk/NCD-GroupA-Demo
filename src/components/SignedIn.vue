@@ -143,7 +143,7 @@ export default {
         // make an update call to the smart contract
         await window.contract.roll_dice(
           {
-            target: this.rollNumber,
+            target: parseInt(this.rollNumber),
           },
           gas,
           1+at
