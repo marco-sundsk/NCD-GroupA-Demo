@@ -1,16 +1,38 @@
 NCD-GroupA-Demo
 ==================
 
-This [Vue] app was initialized with [create-near-app]
+This a demo project for NCD program phase-1.
 
-RollingDice
+RollingDice On NEAR
 ====================
 
-User deposits 1 NEAR and given a number between 1 and 6. Then he get a chance to roll a dice on chain.
-if he rolls out a number identical with the number he just given, then he wins the jackpot, otherwise, his 1 NEAR will be rushed into the jackpot.
+Guys, let's roll dice on NEAR.  
 
-Contract Interface
+## Why dice
+
+Randomness is always a key focus on any blockchain. We wanna show you how convenient that a random number can get on NEAR blockchain.  
+  
+To achieve that, it is hard to believe there is a better way than to make a dice dapp.  
+
+Beyond what you can see in this demo, NEAR can even generate independent randomness not per block, but per receipt!
+
+## How to play
+
+On home page, user can see the whole status of playground without login, i.e. an NEAR account is not necessary. you would have full imformation about owner account of this contract, dice price, commission fee rate, the size of current jackpod and etc.  
+
+Then, user can login with NEAR account and buy several dices. With dices bought, you can guess a number and roll dice again and again. If the dice point is equal to your guess, half of jackpod would be yours. Other the amount you paid for the dice would belong to the jackpod.  
+
+During playing, the recently winner record would appear and be auto refreshed on screen too. 
+
+About Contract
 ====================
+It's need to be mentioned that it is a pure dapp project, which means there is no centralized backend or data server, all persistent information is stored and mananged on NEAR chain by a contract.
+
+## Contract Structure
+
+
+## Contract Interface
+
 
 ```rust
 /// contract commission rate when winner get prized
