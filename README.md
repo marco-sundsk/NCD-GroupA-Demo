@@ -36,6 +36,17 @@ pub struct HumanReadableContractInfo {
     pub rolling_fee: U128,  // how much does one rolling action cost
 }
 
+/// every roll_dice action would return this info
+pub struct HumanReadableDiceResult {
+    pub user: AccountId,  // the one rolls
+    pub user_guess: u8,  // the number he guess
+    pub dice_point: u8,  // the number dice shows
+    pub reward_amount: U128,  // reward he got
+    pub jackpod_left: U128,  // jackpod after his action
+    pub height: U64,  // block height that he rolls
+    pub ts: U64,  // timestamp when he rolls
+}
+
 //****************/
 //***** INIT *****/
 //****************/
@@ -75,12 +86,15 @@ pub fn update_rolling_fee(&mut self, rolling_fee: U128);
 //***** USER FUNCTIONS *****/
 //**************************/
 
-/// user deposit near to play rolling once, left over amount would be paid back.
-/// and if the target equals to the dice point, he get half of the jackpod,
-/// otherwise, the rolling_fee amount of NEAR in her deposit would be rush into jackpod.
-/// return the total dice points.
+/// user deposit near to buy dice. 
+/// he can buy multiple dices,
+/// any leftover amount would refund
+/// eg: rolling_fee is 1 Near, he can buy_dice with 4.4 Near and got 4 dice and 0.4 Near refund.
 #[payable]
-pub fn roll_dice(&mut self, target: u8) -> u8;
+pub fn buy_dice(&mut self);
+
+/// user roll dice once, the his available dice count would reduce by one.
+pub fn roll_dice(&mut self, target: u8) -> HumanReadableDiceResult;
 
 
 //**************************/
@@ -97,6 +111,9 @@ pub fn get_contract_info(&self) -> HumanReadableContractInfo;
 
 /// get current contract commission fee
 pub fn get_reward_fee_fraction(&self) -> RewardFeeFraction;
+
+/// get account's available dice count
+pub fn get_account_dice_count(&self, account_id: String) -> u8;
 
 ```
 
