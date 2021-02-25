@@ -31,29 +31,6 @@
     <div class="container pt-4">
       <SignedOut v-show="!isSignedIn" />
       <SignedIn v-show="isSignedIn" />
-
-      <div>
-        <b-card no-body>
-          <b-tabs card>
-            <b-tab title="ALL" active>
-              <div>
-                <b-card
-                  title="Card Title"
-                  class="mb-2"
-                >
-                  <b-card-text>
-                    Some quick example text to build on the card title and make
-                    up the bulk of the card's content.
-                  </b-card-text>
-                </b-card>
-              </div>
-            </b-tab>
-            <b-tab title="WIN">
-              <b-card-text>Tab contents 2</b-card-text>
-            </b-tab>
-          </b-tabs>
-        </b-card>
-      </div>
     </div>
 
     <footer
