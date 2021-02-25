@@ -3,21 +3,17 @@
     <button class="link" style="float: right" v-on:click="logout">Sign out</button>
     <main>
       <h1>
-        <label
-          for="greeting"
-          style="color: var(--secondary);border-bottom: 2px solid var(--secondary);"
-        >{{ savedGreeting }}</label>
         {{ accountId }}
       </h1>
-      <form v-on:submit.prevent="saveGreeting">
+      <form v-on:submit.prevent="rollDice">
         <fieldset ref="fieldset">
           <label
-            for="greeting"
+            for="rollDice"
             style="display:block; color:var(--gray);margin-bottom:0.5em;"
-          >Change greeting</label>
+          >Roll Dice</label>
           <div style="display:flex">
-            <input v-model="newGreeting" autocomplete="off" id="greeting" style="flex:1" />
-            <button id="save" style="border-radius:0 5px 5px 0">Save</button>
+            <input v-model="rollNumber" autocomplete="off" id="roll" style="flex:1" />
+            <button id="roll_dice" style="border-radius:0 5px 5px 0">Roll</button>
           </div>
         </fieldset>
       </form>
@@ -105,6 +101,7 @@ export default {
     return {
       savedGreeting: "",
       newGreeting: "",
+      rollNumber:"",
       notificationVisible: false,
     }
   },
@@ -135,7 +132,7 @@ export default {
         })
     },
 
-    saveGreeting: async function (event) {
+    rollDice: async function () {
       // fired on form submit button used to update the greeting
 
       // disable the form while the value gets updated on-chain
@@ -144,10 +141,13 @@ export default {
       try {
         
         // make an update call to the smart contract
-        await window.contract.set_greeting({
-          // pass the new greeting
-          message: this.newGreeting,
-        })
+        await window.contract.roll_dice(
+          {
+            target: this.rollNumber,
+          },
+          gas,
+          1+at
+        )
       } catch (e) {
         alert(
           "Something went wrong! " +
@@ -159,9 +159,6 @@ export default {
         // re-enable the form, whether the call succeeded or failed
         this.$refs.fieldset.disabled = false
       }
-
-      // update savedGreeting with persisted value
-      this.savedGreeting = this.newGreeting
 
       this.notificationVisible = true //show new notification
 
