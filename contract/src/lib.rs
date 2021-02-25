@@ -11,8 +11,7 @@ use near_sdk::wee_alloc;
 use near_sdk::json_types::{U64, U128};
 use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{env, near_bindgen, AccountId, Balance, BlockHeight, Promise};
-use std::collections::HashMap;
-use near_sdk::collections::Vector;
+use near_sdk::collections::{Vector, LookupMap};
 use uint::construct_uint;
 
 construct_uint! {
@@ -71,6 +70,18 @@ pub struct HumanReadableContractInfo {
     pub rolling_fee: U128,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub struct HumanReadableDiceResult {
+    pub user: AccountId,
+    pub user_guess: u8,
+    pub dice_point: u8,
+    pub reward_amount: U128,
+    pub jackpod_left: U128,
+    pub height: U64,
+    pub ts: U64,
+}
+
 // Structs in Rust are similar to other languages, and may include impl keyword as shown below
 // Note: the names of the structs are not important when calling the smart contract, but the function names are
 #[near_bindgen]
@@ -83,7 +94,7 @@ pub struct NearDice {
     pub owner_pod: Balance,  // incoming of the contract, can be withdraw by owner
     pub reward_fee_fraction: RewardFeeFraction,
     pub win_history: Vector<WinnerInfo>,
-    records: HashMap<String, String>,  // obsolete when release
+    pub accounts: LookupMap<AccountId, Balance>,  // record user deposit to buy dice
 }
 
 impl Default for NearDice {
@@ -117,7 +128,7 @@ impl NearDice {
             owner_pod: 0_u128,
             reward_fee_fraction,
             win_history: Vector::new(b"w".to_vec()),
-            records: HashMap::new(),
+            accounts: LookupMap::new(b"a".to_vec()),
         }
     }
 
@@ -175,56 +186,107 @@ impl NearDice {
     // rolling functions
     //***********************/
 
-    /// rolling dice
-    /// check the deposit is larger than rolling_fee NEAR, and return leftover back to caller at end of call,
-    /// add rolling_fee NEAR to jackpod and get random number between [1, self.dice_number * 6],
-    /// if identical to target, modify jackpod amount and transfer half of jackpod to caller (within a tip to the owner_pod)
     #[payable]
-    pub fn roll_dice(&mut self, target: u8) -> u8 {
-        let amount = env::attached_deposit();
+    pub fn buy_dice(&mut self) {
+        // check called by real user NOT from other contracts
         let account_id = env::predecessor_account_id();
+        assert_eq!(
+            account_id.clone(),
+            env::signer_account_id(),
+            "This method must be called directly from user."
+        );
+        // check user attached enough rolling fee to buy at least one dice
+        let amount = env::attached_deposit();
         assert!(
             amount >= self.rolling_fee,
             format!("You must deposit more than {}", self.rolling_fee)
         );
+    
+        let buy_dice_count = amount / self.rolling_fee;
+        let leftover = amount - buy_dice_count * self.rolling_fee;
 
-        let leftover = amount - self.rolling_fee;
-        let net_reward;
+        let old_value = self.accounts.get(&account_id).unwrap_or(0);
+        self.accounts.insert(&account_id, &(old_value + buy_dice_count * self.rolling_fee));
+
+        // change refund
+        if leftover > 0 {
+            Promise::new(account_id).transfer(leftover);
+        }
+    }
+
+
+    /// rolling dice
+    /// check the deposit is larger than rolling_fee NEAR, and return leftover back to caller at end of call,
+    /// add rolling_fee NEAR to jackpod and get random number between [1, self.dice_number * 6],
+    /// if identical to target, modify jackpod amount and transfer half of jackpod to caller (within a tip to the owner_pod)
+    pub fn roll_dice(&mut self, target: u8) -> HumanReadableDiceResult {
+
+        // check called by real user NOT from other contracts
+        let account_id = env::predecessor_account_id();
+        assert_eq!(
+            account_id.clone(),
+            env::signer_account_id(),
+            "This method must be called directly from user."
+        );
+
+        // check user has at least one dice remain
+        let balance = self.accounts.get(&account_id).unwrap_or(0);
+        assert!(
+            balance / self.rolling_fee >= 1,
+            "You must at least have one dice to play"
+        );
+
+        // update account dice
+        let leftover = balance - self.rolling_fee;
+        if leftover == 0 {
+            self.accounts.remove(&account_id);
+        } else {
+            self.accounts.insert(&account_id, &leftover);
+        }
+        // always update jack_pod before rolling dice
         self.jack_pod += self.rolling_fee;
 
-        // 获取单字节随机数
+        // rolling dice here
         let random_u8: u8 = env::random_seed().iter().fold(0_u8, |acc, x| acc.wrapping_add(*x));
         let dice_point = self.dice_number as u16 * 6_u16 * random_u8 as u16 / 0x100_u16 + 1;
-        if target == dice_point as u8 {
+
+        let mut result = HumanReadableDiceResult {
+            user: account_id.clone(),
+            user_guess: target,
+            dice_point: dice_point as u8,
+            reward_amount: 0.into(),  // if win, need update
+            jackpod_left: self.jack_pod.into(),  // if win, need update
+            height: env::block_index().into(),
+            ts: env::block_timestamp().into(),
+        };
+        
+        // let's see how lucky caller is this time
+        if target == dice_point as u8 {  // Wow, he wins
+            // figure out gross reward and update jack pod
             let gross_reward = self.jack_pod / 2;
             self.jack_pod -= gross_reward;
+            // split gross to net and owner fee
             let owners_fee = self.reward_fee_fraction.multiply(gross_reward);
-            net_reward = gross_reward - owners_fee;
+            result.reward_amount = (gross_reward - owners_fee).into();
+            result.jackpod_left = self.jack_pod.into();
+            // update owner pod 
             self.owner_pod += owners_fee;
+            // records this winning
             self.win_history.push(&WinnerInfo {
                 user: account_id.clone(),
-                amount: net_reward,
+                amount: gross_reward - owners_fee,
                 height: env::block_index(),
                 ts: env::block_timestamp(),
             });
-        } else {
-            net_reward = 0;
-        }
-        let refound = net_reward + leftover;
-        if refound > 0 {
-            Promise::new(account_id.clone()).transfer(net_reward+leftover);
         }
         
-        dice_point as u8
+        result
     }
 
     pub fn set_greeting(&mut self, message: String) {
         let account_id = env::signer_account_id();
-
         // Use env::log to record logs permanently to the blockchain!
         env::log(format!("Saving greeting '{}' for account '{}'", message, account_id,).as_bytes());
-
-        self.records.insert(account_id, message);
     }
 
     //***********************/
@@ -264,14 +326,14 @@ impl NearDice {
         self.reward_fee_fraction.clone()
     }
 
-    // `match` is similar to `switch` in other languages; here we use it to default to "Hello" if
-    // self.records.get(&account_id) is not yet defined.
-    // Learn more: https://doc.rust-lang.org/book/ch06-02-match.html#matching-with-optiont
+    /// return user's available dice count
+    pub fn get_account_dice_count(&self, account_id: String) -> u8 {
+        let balance = self.accounts.get(&account_id.into()).unwrap_or(0);
+        (balance / self.rolling_fee) as u8
+    }
+
     pub fn get_greeting(&self, account_id: String) -> &str {
-        match self.records.get(&account_id) {
-            Some(greeting) => greeting,
-            None => "Hello",
-        }
+        "Hello, this method has obsolete"
     }
 }
 
