@@ -13,7 +13,7 @@
           >Buy Dice</label>
           <div style="display:flex">
             Buy<input v-model="rollCount" autocomplete="off" id="roll" style="flex:1" />times
-            <button id="roll_dice" style="border-radius:0 5px 5px 0">Buy</button>
+            <button id="buy_dice" style="border-radius:0 5px 5px 0">Buy</button>
           </div>
         </fieldset>
       </form>
@@ -161,12 +161,7 @@ export default {
           parseInt(this.rollCount)+this.at
         )
       } catch (e) {
-        alert(
-          "Something went wrong! " +
-            "Maybe you need to sign out and back in? " +
-            "Check your browser console for more info."
-        )
-        throw e //re-throw
+        console.log(e)
       } finally {
         // re-enable the form, whether the call succeeded or failed
         this.$refs.fieldset.disabled = false
@@ -195,14 +190,21 @@ export default {
           {
             target: parseInt(this.rollNumber),
           }
-        )
+        ).then((res)=>{
+          if (res.dice_point===res.user_guess) {
+            const reward_amount = res.reward_amount.toString()
+            const temp_amount = reward_amount.substr(0,reward_amount.length-20)
+            const int_part = temp_amount.substr(0,temp_amount.length-4)
+            const float_part = temp_amount.substr(0,int_part.legnth)
+            alert('Congratulations to you, you win '+int_part+'.'+float_part+' near')
+          } else {
+            alert('You lose, the number is '+res.dice_point)
+          }
+          this.leftCount = this.leftCount-1
+          console.log(res)
+        });
       } catch (e) {
-        alert(
-          "Something went wrong! " +
-            "Maybe you need to sign out and back in? " +
-            "Check your browser console for more info."
-        )
-        throw e //re-throw
+        console.log(e) //re-throw
       } finally {
         // re-enable the form, whether the call succeeded or failed
         this.$refs.fieldset.disabled = false
