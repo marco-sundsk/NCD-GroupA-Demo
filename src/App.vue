@@ -1,8 +1,8 @@
 <template>
-  <div id="root">
-    <div class="bg-light">
-      <b-navbar class="container">
-        <b-navbar-brand href="#">NEAR DICE DAPP</b-navbar-brand>
+  <div id="root" class="main">
+    <div class="bg-dark">
+      <b-navbar class="container py-3" type="dark">
+        <img :src="require('./assets/neardice-logo.png')" alt="Near Dice" height="32px" class="mr-1">
         <b-navbar-toggle target="nav-collapse"></b-navbar-toggle>
         <b-collapse id="nav-collapse" is-nav>
           <b-navbar-nav>
@@ -12,11 +12,17 @@
 
           <!-- Right aligned nav items -->
           <b-navbar-nav class="ml-auto">
+            <button class="btn btn-info" style="float: right" v-on:click="logout" v-show="isSignedIn">
+              Sign Out
+            </button>
+            <button class="btn btn-info" style="float: right" v-on:click="login" v-show="!isSignedIn">
+              Sign In
+            </button>
+
             <b-nav-item-dropdown text="Language" right>
               <b-dropdown-item href="#">EN</b-dropdown-item>
               <b-dropdown-item href="#">中文</b-dropdown-item>
             </b-nav-item-dropdown>
-
             <!-- <b-nav-item-dropdown right>
               <template #button-content>
                 <em>User</em>
@@ -29,8 +35,7 @@
       </b-navbar>
     </div>
     <div class="container pt-4">
-      <SignedOut v-show="!isSignedIn" />
-      <SignedIn v-show="isSignedIn" />
+      <SignedIn />
     </div>
 
     <footer
@@ -47,8 +52,8 @@
 <script>
 import "./global.css";
 import getConfig from "./config";
-import SignedOut from "./components/SignedOut.vue";
 import SignedIn from "./components/SignedIn.vue";
+import { login,logout } from "./utils";
 
 const nearConfig = getConfig(process.env.NODE_ENV || "development");
 console.log(
@@ -62,7 +67,6 @@ export default {
   },
   name: "App",
   components: {
-    SignedOut,
     SignedIn,
   },
 
@@ -71,6 +75,13 @@ export default {
       return window.walletConnection.isSignedIn();
     },
   },
+  methods: {
+    login() {
+      console.log("calling utils.login")
+      login()
+    },
+    logout: logout,  
+  }
 };
 </script>
 

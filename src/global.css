@@ -1,0 +1,33 @@
+.main {
+	background-image: url('assets/satoshi-dice-background.png') , linear-gradient(to right, rgb(131, 96, 195), rgb(46, 191, 145));
+	background-size: cover;
+}
+.shadow {
+	background: rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    color: rgb(255, 255, 255);
+    text-align: center;
+    margin: auto;
+    width: 100%;
+}
+.number-item {
+	float: left;
+	list-style: none;
+	padding: 10px;
+}
+.number-item a {
+	display: block;
+	width: 24px;
+	height: 24px;
+	line-height: 16px;
+	padding: 4px;
+	border-radius: 12px;
+	background: #fff;
+	color: #000;
+	font-size: 14px;
+	margin: 0 10px;
+}
+.number-item a.active {
+	background: #000;
+	color: #fff;
+}

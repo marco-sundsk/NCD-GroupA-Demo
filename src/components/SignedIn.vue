@@ -1,79 +1,100 @@
 <template>
   <div>
-    <button class="link" style="float: right" v-on:click="logout">
-      Sign out
-    </button>
+    <div class="vld-parent">
+      <loading :active.sync="isLoading" :can-cancel="true" :is-full-page="fullPage"></loading>
+    </div>
     <main>
-      <h1>
-        Welcome {{ accountId }}, You have {{ this.leftCount }} time to dice
+      <h1 class="shadow py-2" v-show="isSignedIn">
+        Welcome {{ accountId }}, You have {{ this.leftCount }} times to dice
       </h1>
-      <form v-on:submit.prevent="buyDice">
-        <fieldset ref="fieldset">
-          <label
-            for="buyDice"
-            style="display: block; color: var(--gray); margin-bottom: 0.5em"
-          >Buy Dice</label
-          >
-          <div style="display: flex">
-            Buy<input
-              v-model="rollCount"
-              autocomplete="off"
-              id="roll"
-              style="flex: 1"
-            />times
-            <button id="buy_dice" style="border-radius: 0 5px 5px 0">
-              Buy
-            </button>
-          </div>
-        </fieldset>
-      </form>
 
-      <form v-on:submit.prevent="rollDice">
-        <fieldset ref="fieldset">
-          <label
-            for="rollDice"
-            style="display: block; color: var(--gray); margin-bottom: 0.5em"
-          >Roll Dice</label
-          >
-          <div style="display: flex">
-            <input
-              v-model="rollNumber"
-              autocomplete="off"
-              id="roll"
-              style="flex: 1"
-            />
-            <button id="roll_dice" style="border-radius: 0 5px 5px 0">
-              Roll
-            </button>            
+      <div class="contianer">
+        <div class="row">
+          <div class="col-md-3">
+            <form v-on:submit.prevent="buyDice" class="shadow mt-5 py-4">
+              <fieldset ref="fieldset">
+                <div class="form-group py-3">
+                  <span class="text-white">Buy </span>
+                  <select name="rollCount" v-model="rollCount" id="roll" class="ml-2 mr-2">
+                    <option value="1" selected="selected">1</option>
+                    <option value="1">5</option>
+                    <option value="1">10</option>
+                    <option value="1">30</option>
+                    <option value="1">50</option>
+                    <option value="1">100</option>
+                    <option value="1">1000</option>
+                  </select> 
+                  <span class="text-white"> times</span>
+                  <button id="buy_dice" class="btn btn-danger btn-sm ml-2">
+                    Buy
+                  </button>
+                </div>
+              </fieldset>
+            </form>
           </div>
-          <Dice :start="diceStart" :num="diceNum" v-show="diceShow" />
-        </fieldset>
-      </form>
+          <div class="col-md-6">
+            <div class="mt-5">
+              <h2 class="text-white text-center">Jackpot:</h2>
+              <p class="text-center"><span class="display-3" style="letter-spacing: 1rem">{{jackpot}}</span>Near</p>
+              <p class="text-center display-4 text-white">Recent Wins</p>
+              <table class="table table-hover" style="border: solid 1px #dee2e6;background: #fff">
+                <thead>
+                  <tr>
+                    <th scope="col">Height</th>
+                    <th scope="col">Username</th>
+                    <th scope="col">Prize</th>
+                    <!-- <th scope="col">TS</th> -->
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="item in winList" :key="item.height">
+                    <th scope="row">{{item.height}}</th>
+                    <td>{{item.user}}</td>
+                    <td><span style="color: green">{{formatAmount(item.amount)}}</span> Near</td>
+                    <!-- <td>{{item.ts}}</td> -->
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <form v-on:submit.prevent="rollDice" class="shadow mt-5 py-4">
+              <fieldset ref="fieldset">
+                <div>
+                  <span class="text-white">Select number to bet</span><br>
+                  <ul>
+                    <li class="number-item"><a :class="active1" @click="chooseNumber(1)">1</a></li>
+                    <li class="number-item"><a :class="active2" @click="chooseNumber(2)">2</a></li>
+                    <li class="number-item"><a :class="active3" @click="chooseNumber(3)">3</a></li>
+                    <li class="number-item"><a :class="active4" @click="chooseNumber(4)">4</a></li>
+                    <li class="number-item"><a :class="active5" @click="chooseNumber(5)">5</a></li>
+                    <li class="number-item"><a :class="active6" @click="chooseNumber(6)">6</a></li>
+                  </ul>
+                  <button id="roll_dice"  class="btn btn-warning btn-sm ml-2">
+                    Roll
+                  </button>            
+                </div>
+              </fieldset>
+            </form>
+          </div>
+        </div>
+      </div>
     </main>
-
-    <Notification
-      v-show="notificationVisible"
-      ref="notification"
-      :networkId="networkId"
-      :msg="'called method: set_greeting'"
-      :contractId="contractId"
-      :visible="false"
-    />
   </div>
 </template>
 
 <script>
 import { logout } from "../utils";
-
-import Notification from "./Notification.vue";
-import Dice from "./Dice.vue";
+// Import component
+import Loading from 'vue-loading-overlay';
+// Import stylesheet
+import 'vue-loading-overlay/dist/vue-loading.css';
 
 export default {
   name: "SignedIn",
 
   components: {
-    Notification,
-    Dice,
+    Loading
   },
   data: function () {
     return {
@@ -84,15 +105,22 @@ export default {
       leftCount: 0,
       rollCount: "",
       rollNumber: "",
-      notificationVisible: false,
-      diceShow: false,
-      diceStart: false,
-      diceNum:0,
+      jackpot: 100,
+      winList: {},
+      active1: "",
+      active2: "",
+      active3: "",
+      active4: "",
+      active5: "",
+      active6: "",
+      isLoading: false,
+      fullPage: true
     };
   },
 
   created() {
-    this.getLeftCount();
+    this.getLeftCount()
+    this.getWinHistory()
   },
 
   computed: {
@@ -113,6 +141,58 @@ export default {
   },
 
   methods: {
+    chooseNumber(num) {
+      console.log(num)
+      this.rollNumber = num
+      if (num==1) {
+        this.active1 = 'active'
+        this.active2 = ''
+        this.active3 = ''
+        this.active4 = ''
+        this.active5 = ''
+        this.active6 = ''
+      }
+      if (num==2) {
+        this.active1 = ''
+        this.active2 = 'active'
+        this.active3 = ''
+        this.active4 = ''
+        this.active5 = ''
+        this.active6 = ''
+      }
+      if (num==3) {
+        this.active1 = ''
+        this.active2 = ''
+        this.active3 = 'active'
+        this.active4 = ''
+        this.active5 = ''
+        this.active6 = ''
+      }
+      if (num==4) {
+        this.active1 = ''
+        this.active2 = ''
+        this.active3 = ''
+        this.active4 = 'active'
+        this.active5 = ''
+        this.active6 = ''
+      }
+      if (num==5) {
+        this.active1 = ''
+        this.active2 = ''
+        this.active3 = ''
+        this.active4 = ''
+        this.active5 = 'active'
+        this.active6 = ''
+      }
+      if (num==6) {
+        this.active1 = ''
+        this.active2 = ''
+        this.active3 = ''
+        this.active4 = ''
+        this.active5 = ''
+        this.active6 = 'active'
+      }
+    },
     getLeftCount() {
       //retrieve greeting
       window.contract
@@ -145,20 +225,10 @@ export default {
         // re-enable the form, whether the call succeeded or failed
         this.$refs.fieldset.disabled = false;
       }
-
-      this.notificationVisible = true; //show new notification
-
-      // remove Notification again after css animation completes
-      // this allows it to be shown again next time the form is submitted
-      setTimeout(() => {
-        this.notificationVisible = false;
-      }, 11000);
     },
 
     rollDice: async function () {
-      this.diceShow=true
-      // fired on form submit button used to update the greeting
-
+      this.isLoading = true;
       // disable the form while the value gets updated on-chain
       this.$refs.fieldset.disabled = true;
 
@@ -169,7 +239,7 @@ export default {
             target: parseInt(this.rollNumber),
           })
           .then((res) => {
-            this.showDice(res.dice_point)
+            this.isLoading = false;
             if (res.dice_point === res.user_guess) {
               const reward_amount = res.reward_amount.toString();
               const temp_amount = reward_amount.substr(
@@ -189,6 +259,7 @@ export default {
               alert("You lose, the number is " + res.dice_point);
             }
             this.leftCount = this.leftCount - 1;
+            this.jackpot = this.formatAmount(res.jackpod_left);
             console.log(res);
           });
       } catch (e) {
@@ -197,16 +268,35 @@ export default {
         // re-enable the form, whether the call succeeded or failed
         this.$refs.fieldset.disabled = false;
       }
-
-      this.notificationVisible = true; //show new notification
-
-      // remove Notification again after css animation completes
-      // this allows it to be shown again next time the form is submitted
-      setTimeout(() => {
-        this.notificationVisible = false;
-      }, 11000);
     },
 
+    getWinHistory: async function () {
+      try {
+        // make an update call to the smart contract
+        await window.contract
+          .get_win_history({
+            from_index: 0,
+            limit: 20,
+          })
+          .then((res) => {
+            this.winList = res;
+            console.log(res);
+          });
+      } catch (e) {
+        console.log(e); //re-throw
+      }
+    },
+
+    formatAmount: function (amount) {
+      const reward_amount = amount.toString();
+      const temp_amount = reward_amount.substr(
+        0,
+        reward_amount.length - 20
+      );
+      const int_part = temp_amount.substr(0, temp_amount.length - 4);
+      const float_part = temp_amount.substr(0, int_part.legnth);
+      return int_part + "." +float_part;
+    },
     logout: logout,
   },
 };
