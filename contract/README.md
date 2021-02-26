@@ -12,7 +12,6 @@ Before you compile this code, you will need to install Rust with [correct target
 ```shell
 # deploy
 near dev-deploy res/neardice.wasm
-# dev-1614170766884-7229574  old contract
 # dev-1614240595058-5266655  cur contract
 
 # init
