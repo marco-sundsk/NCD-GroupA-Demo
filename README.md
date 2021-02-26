@@ -3,7 +3,7 @@ NCD-GroupA-Demo
 
 This is a homework demo project for NCD program phase-1.
 
-RollingDice On NEAR
+Rolling Dice On NEAR
 ====================
 
 Guys, let's roll dice on NEAR.  
