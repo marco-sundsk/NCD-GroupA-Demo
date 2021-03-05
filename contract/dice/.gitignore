@@ -1,0 +1,7 @@
+Cargo.lock
+res/*.wasm
+target
+**/target/
+**/pkg/
+
+.cargo/
